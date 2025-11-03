@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Light theme - Foguete Gestão colors */
+    --background: 0 0% 98%;
+    --foreground: 220 50% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 50% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 50% 12%;
+
+    --primary: 358 82% 51%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 358 82% 41%;
+    
+    /* Auth card dark variant */
+    --auth-card: 220 50% 8%;
+    --auth-card-foreground: 0 0% 98%;
+
+    --secondary: 45 100% 50%;
+    --secondary-foreground: 220 50% 12%;
+
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 195 100% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --warning: 38 100% 50%;
+    --warning-foreground: 220 50% 12%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 358 82% 51%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 40%;
+    --sidebar-primary: 358 82% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 96%;
+    --sidebar-accent-foreground: 220 50% 12%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 358 82% 51%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(358 82% 51%) 0%, hsl(25 100% 55%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(195 100% 48%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(195 100% 98%) 100%);
+    --gradient-rocket: linear-gradient(135deg, hsl(358 82% 51%) 0%, hsl(45 100% 50%) 50%, hsl(195 100% 48%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(358 82% 51% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(358 82% 51% / 0.15), 0 4px 6px -2px hsl(0 0% 0% / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(358 82% 51% / 0.2), 0 10px 10px -5px hsl(0 0% 0% / 0.04);
+    --shadow-glow: 0 0 40px hsl(358 82% 51% / 0.4), 0 0 20px hsl(195 100% 48% / 0.3);
+
+    /* Transitions */
+    --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    /* Dark theme - Foguete Gestão colors */
+    --background: 220 50% 8%;
+    --foreground: 0 0% 98%;
+
+    --card: 220 45% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 220 45% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 358 82% 51%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 358 82% 41%;
+
+    --secondary: 45 100% 50%;
+    --secondary-foreground: 220 50% 12%;
+
+    --muted: 220 30% 18%;
+    --muted-foreground: 220 15% 65%;
+
+    --accent: 195 100% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --warning: 38 100% 50%;
+    --warning-foreground: 220 50% 12%;
+
+    --border: 220 30% 18%;
+    --input: 220 30% 18%;
+    --ring: 358 82% 51%;
+
+    --sidebar-background: 220 50% 8%;
+    --sidebar-foreground: 220 15% 65%;
+    --sidebar-primary: 358 82% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 30% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 30% 18%;
+    --sidebar-ring: 358 82% 51%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(358 82% 51%) 0%, hsl(25 100% 55%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(195 100% 48%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(220 45% 12%) 0%, hsl(220 50% 8%) 100%);
+    --gradient-rocket: linear-gradient(135deg, hsl(358 82% 51%) 0%, hsl(45 100% 50%) 50%, hsl(195 100% 48%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 6px -1px hsl(358 82% 51% / 0.3), 0 2px 4px -1px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 10px 15px -3px hsl(358 82% 51% / 0.4), 0 4px 6px -2px hsl(0 0% 0% / 0.2);
+    --shadow-xl: 0 20px 25px -5px hsl(358 82% 51% / 0.5), 0 10px 10px -5px hsl(0 0% 0% / 0.2);
+    --shadow-glow: 0 0 40px hsl(358 82% 51% / 0.5), 0 0 20px hsl(195 100% 48% / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Better touch targets */
+    button, 
+    a, 
+    [role="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Prevent zoom on inputs */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="time"],
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+}

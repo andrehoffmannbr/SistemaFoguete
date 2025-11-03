@@ -1,0 +1,34 @@
+project_id = "fjfeydaisukgftwcuygp"
+
+[functions.generate-pix]
+verify_jwt = true
+
+[functions.pix-webhook]
+verify_jwt = false
+
+[functions.send-payment-reminder]
+verify_jwt = false
+
+[functions.generate-daily-report]
+verify_jwt = true
+
+[functions.send-post-service-message]
+verify_jwt = false
+
+[functions.reactivate-customer]
+verify_jwt = true
+
+[functions.send-proposal]
+verify_jwt = true
+
+[functions.proposal-follow-up]
+verify_jwt = false
+
+[functions.process-recurring-payments]
+verify_jwt = false
+
+[functions.handle-payment-failure]
+verify_jwt = false
+
+[functions.generate-inactive-customer-tasks]
+verify_jwt = false
