@@ -46,7 +46,34 @@ npm run dev
 
 O sistema estará disponível em: **http://localhost:8080**
 
-## 🔌 Conexão com Banco de Dados
+## � Integração Mercado Pago PIX
+
+Sistema completo de pagamentos via PIX integrado com Mercado Pago:
+
+✅ **Geração automática de QR Code PIX**
+✅ **Webhook para confirmação automática de pagamento**
+✅ **Atualização automática de transações financeiras**
+✅ **Componente React pronto para exibir QR Code**
+
+### Configuração Rápida:
+
+1. Obtenha suas credenciais em: https://www.mercadopago.com.br/developers/panel/app
+2. Configure no `.env`:
+```bash
+VITE_MERCADO_PAGO_ACCESS_TOKEN=seu_token_aqui
+VITE_MERCADO_PAGO_PUBLIC_KEY=sua_chave_publica_aqui
+```
+3. Configure o secret no Supabase (Edge Functions)
+4. Configure o webhook no painel do Mercado Pago
+
+📖 **Guia completo de configuração**: Consulte o arquivo `MERCADO_PAGO_SETUP.md`
+
+### Modo de Operação:
+- 🧪 **Sem credenciais**: Modo MOCK (demonstração)
+- ✅ **Com credenciais TEST**: Ambiente de testes
+- 🚀 **Com credenciais PRODUÇÃO**: Pagamentos reais
+
+## �🔌 Conexão com Banco de Dados
 
 ### Via SQLTools no VS Code:
 

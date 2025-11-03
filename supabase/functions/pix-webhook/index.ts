@@ -3,14 +3,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-signature",
 };
 
-interface PixWebhookPayload {
-  txid: string;
-  status: "paid" | "expired" | "cancelled";
-  amount: number;
-  paidAt?: string;
+interface MercadoPagoWebhookPayload {
+  id: number;
+  live_mode: boolean;
+  type: string;
+  date_created: string;
+  application_id: number;
+  user_id: number;
+  version: number;
+  api_version: string;
+  action: string;
+  data: {
+    id: string;
+  };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,38 +32,105 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // TODO: Verify webhook signature from your payment provider
-    // This is critical for security!
-    
-    const payload: PixWebhookPayload = await req.json();
-    console.log("Received Pix webhook:", payload);
+    // Get webhook payload
+    const payload: MercadoPagoWebhookPayload = await req.json();
+    console.log("Received Mercado Pago webhook:", JSON.stringify(payload, null, 2));
 
-    // Find the Pix charge
-    const { data: pixCharge, error: findError } = await supabaseClient
-      .from("pix_charges")
-      .select("*")
-      .eq("txid", payload.txid)
-      .single();
-
-    if (findError || !pixCharge) {
-      console.error("Pix charge not found:", payload.txid);
+    // Mercado Pago sends different types of notifications
+    // We're interested in "payment" type
+    if (payload.type !== "payment") {
+      console.log("Ignoring non-payment notification:", payload.type);
       return new Response(
-        JSON.stringify({ error: "Pix charge not found" }),
+        JSON.stringify({ success: true, message: "Notification type ignored" }),
         {
-          status: 404,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
-    // Update Pix charge status
+    // Get payment details from Mercado Pago API
+    const mercadoPagoAccessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
+    if (!mercadoPagoAccessToken) {
+      throw new Error("MERCADO_PAGO_ACCESS_TOKEN not configured");
+    }
+
+    const paymentId = payload.data.id;
+    const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${mercadoPagoAccessToken}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!paymentResponse.ok) {
+      const errorText = await paymentResponse.text();
+      console.error("Error fetching payment from Mercado Pago:", errorText);
+      throw new Error(`Mercado Pago API error: ${paymentResponse.status}`);
+    }
+
+    const paymentData = await paymentResponse.json();
+    console.log("Payment data:", JSON.stringify(paymentData, null, 2));
+
+    // Find the Pix charge by Mercado Pago ID
+    const { data: pixCharge, error: findError } = await supabaseClient
+      .from("pix_charges")
+      .select("*")
+      .eq("txid", paymentId.toString())
+      .single();
+
+    if (findError || !pixCharge) {
+      console.error("Pix charge not found for payment ID:", paymentId);
+      // Return 200 to avoid Mercado Pago retrying
+      return new Response(
+        JSON.stringify({ success: true, message: "Payment not found in database" }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Map Mercado Pago status to our status
+    let status = "pending";
+    let paidAt: string | null = null;
+
+    switch (paymentData.status) {
+      case "approved":
+        status = "paid";
+        paidAt = paymentData.date_approved || new Date().toISOString();
+        break;
+      case "pending":
+      case "in_process":
+        status = "pending";
+        break;
+      case "rejected":
+      case "cancelled":
+        status = "cancelled";
+        break;
+      case "refunded":
+      case "charged_back":
+        status = "cancelled";
+        break;
+      default:
+        status = "pending";
+    }
+
+    // Update Pix charge
     const updateData: any = {
-      status: payload.status,
-      updated_at: new Date().toISOString()
+      status: status,
+      updated_at: new Date().toISOString(),
+      metadata: {
+        ...(pixCharge.metadata as any || {}),
+        mercado_pago_status: paymentData.status,
+        mercado_pago_status_detail: paymentData.status_detail,
+        last_webhook_at: new Date().toISOString()
+      }
     };
 
-    if (payload.status === "paid" && payload.paidAt) {
-      updateData.paid_at = payload.paidAt;
+    if (paidAt) {
+      updateData.paid_at = paidAt;
     }
 
     const { error: updateError } = await supabaseClient
@@ -67,20 +142,47 @@ const handler = async (req: Request): Promise<Response> => {
       throw updateError;
     }
 
-    // The trigger will automatically:
-    // 1. Update appointment payment status
-    // 2. Create/update financial transaction
-    // 3. Mark as paid in the system
+    // Update financial transaction to completed if payment approved
+    if (status === "paid" && pixCharge.transaction_id) {
+      await supabaseClient
+        .from("financial_transactions")
+        .update({
+          status: "completed",
+          transaction_date: paidAt,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", pixCharge.transaction_id);
 
-    console.log("Pix charge updated successfully:", pixCharge.id);
+      console.log("Financial transaction marked as completed:", pixCharge.transaction_id);
+    }
 
-    // TODO: Send WhatsApp confirmation message to customer
-    // You can call send-whatsapp function here
+    // Update appointment payment status if applicable
+    if (status === "paid" && pixCharge.appointment_id) {
+      await supabaseClient
+        .from("appointments")
+        .update({
+          payment_status: "paid",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", pixCharge.appointment_id);
+
+      console.log("Appointment payment marked as paid:", pixCharge.appointment_id);
+    }
+
+    console.log("Pix charge updated successfully:", pixCharge.id, "Status:", status);
+
+    // TODO: Send WhatsApp/Email confirmation to customer
+    // if (status === "paid" && pixCharge.customer_phone) {
+    //   await supabase.functions.invoke("send-payment-confirmation", {
+    //     body: { pixChargeId: pixCharge.id }
+    //   });
+    // }
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: "Webhook processed successfully" 
+        message: "Webhook processed successfully",
+        status: status
       }),
       {
         status: 200,
