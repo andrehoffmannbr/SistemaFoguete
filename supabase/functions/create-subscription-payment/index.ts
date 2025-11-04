@@ -29,15 +29,25 @@ serve(async (req) => {
   }
 
   try {
+    const startedAt = Date.now();
+    const authHeader = req.headers.get("Authorization") || "";
+    const hasBearer = authHeader.toLowerCase().startsWith("bearer ");
+    let jwtAud = "n/a", jwtSub = "n/a", jwtExp = 0, now = Math.floor(Date.now()/1000);
+    if (hasBearer) {
+      try {
+        const token = authHeader.slice(7);
+        const payload = JSON.parse(atob(token.split(".")[1] || ""));
+        jwtAud = payload?.aud || "n/a";
+        jwtSub = (payload?.sub || "n/a").slice(0, 8);
+        jwtExp = payload?.exp || 0;
+      } catch { /* silent */ }
+    }
+
     // Client para autenticação do usuário (usa ANON_KEY com JWT)
     const authClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
+      { global: { headers: { Authorization: authHeader } } }
     );
 
     // Client para operações no banco - com fallback resiliente
@@ -56,12 +66,20 @@ serve(async (req) => {
     }
 
     // Verificar usuário autenticado usando authClient
-    const {
-      data: { user },
-    } = await authClient.auth.getUser();
-
-    if (!user) {
-      throw new Error("Usuário não autenticado");
+    const { data: { user }, error: userErr } = await authClient.auth.getUser();
+    if (userErr || !user) {
+      const reason = !hasBearer
+        ? "MissingAuthorizationHeader"
+        : (jwtExp && now > jwtExp)
+            ? "TokenExpired"
+            : (userErr?.message || "AuthGetUserFailed");
+      return new Response(JSON.stringify({
+        error: "Usuário não autenticado",
+        reason,
+        jwt: { aud: jwtAud, sub: jwtSub, exp: jwtExp, now },
+        service: "create-subscription-payment",
+        t: Date.now() - startedAt
+      }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }});
     }
 
     const { plan, paymentMethod }: SubscriptionPaymentRequest = await req.json();

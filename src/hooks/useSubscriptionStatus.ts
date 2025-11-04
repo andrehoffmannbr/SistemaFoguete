@@ -86,7 +86,13 @@ export function useSubscriptionStatus() {
 
       const response = await supabase.functions.invoke("create-subscription-payment", {
         body: { plan, paymentMethod },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          // Envia também a apikey do mesmo client (evita edge cases de merge de headers)
+          apikey: (supabase as any).rest?.headers?.apikey
+            || import.meta.env.VITE_SUPABASE_ANON_KEY
+            || "",
+        },
       });
 
       console.log("Resposta da Edge Function:", response);
