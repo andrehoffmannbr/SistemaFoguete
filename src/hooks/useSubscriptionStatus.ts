@@ -83,12 +83,21 @@ export function useSubscriptionStatus() {
         throw new Error("Usuário não autenticado");
       }
 
+      console.log("Chamando Edge Function com:", { plan, paymentMethod, userId: session.user.id });
+
       const response = await supabase.functions.invoke("create-subscription-payment", {
         body: { plan, paymentMethod },
       });
 
+      console.log("Resposta da Edge Function:", response);
+
       if (response.error) {
-        throw response.error;
+        console.error("Erro na Edge Function:", response.error);
+        throw new Error(response.error.message || "Erro ao gerar pagamento");
+      }
+
+      if (!response.data) {
+        throw new Error("Resposta vazia da Edge Function");
       }
 
       return response.data;

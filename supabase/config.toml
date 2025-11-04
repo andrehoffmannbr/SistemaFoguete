@@ -1,4 +1,13 @@
-project_id = "fjfeydaisukgftwcuygp"
+project_id = "sirkjzhohglvcwtruazq"
+
+[functions.create-subscription-payment]
+verify_jwt = true
+
+[functions.subscription-payment-webhook]
+verify_jwt = false
+
+[functions.check-subscription-expiry]
+verify_jwt = false
 
 [functions.generate-pix]
 verify_jwt = true
