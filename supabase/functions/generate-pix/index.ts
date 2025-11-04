@@ -257,11 +257,12 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error generating Pix charge:", error);
+    const errorMessage = error instanceof Error ? error.message : "Erro ao gerar cobrança Pix";
     return new Response(
       JSON.stringify({ 
-        error: error.message || "Erro ao gerar cobrança Pix",
+        error: errorMessage,
         success: false 
       }),
       {

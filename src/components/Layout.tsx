@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { User } from "@supabase/supabase-js";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SearchBar } from "@/components/SearchBar";
+import { SubscriptionButton } from "@/components/SubscriptionButton";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -193,6 +194,7 @@ const Layout = ({ children }: LayoutProps) => {
               </div>
 
               <div className="flex items-center gap-1 sm:gap-2 ml-auto">
+                <SubscriptionButton />
                 <ThemeToggle />
                 
                 <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>

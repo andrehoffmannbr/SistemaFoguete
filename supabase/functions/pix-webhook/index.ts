@@ -118,11 +118,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Update Pix charge
-    const updateData: any = {
+    const existingMetadata = pixCharge.metadata as Record<string, unknown> | null;
+    const updateData: Record<string, unknown> = {
       status: status,
       updated_at: new Date().toISOString(),
       metadata: {
-        ...(pixCharge.metadata as any || {}),
+        ...(existingMetadata || {}),
         mercado_pago_status: paymentData.status,
         mercado_pago_status_detail: paymentData.status_detail,
         last_webhook_at: new Date().toISOString()
@@ -189,11 +190,12 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error processing Pix webhook:", error);
+    const errorMessage = error instanceof Error ? error.message : "Error processing webhook";
     return new Response(
       JSON.stringify({ 
-        error: error.message || "Error processing webhook",
+        error: errorMessage,
         success: false 
       }),
       {
