@@ -29,9 +29,10 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // Client para autenticação do usuário (usa ANON_KEY com JWT)
+    const authClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
           headers: { Authorization: req.headers.get("Authorization")! },
@@ -39,9 +40,16 @@ serve(async (req) => {
       }
     );
 
+    // Client para operações no banco (usa SERVICE_ROLE_KEY, bypassa RLS)
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Verificar usuário autenticado usando authClient
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (!user) {
       throw new Error("Usuário não autenticado");
@@ -56,8 +64,8 @@ serve(async (req) => {
     const amount = PLAN_PRICES[plan];
     const planName = PLAN_NAMES[plan];
 
-    // Buscar assinatura do usuário
-    const { data: subscription, error: subError } = await supabaseClient
+    // Buscar assinatura do usuário usando adminClient
+    const { data: subscription, error: subError } = await adminClient
       .from("user_subscriptions")
       .select("*")
       .eq("user_id", user.id)
@@ -76,7 +84,7 @@ serve(async (req) => {
       // Modo MOCK para desenvolvimento
       const mockPaymentId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      const { data: paymentRecord, error: insertError } = await supabaseClient
+      const { data: paymentRecord, error: insertError } = await adminClient
         .from("subscription_payments")
         .insert({
           user_subscription_id: subscription?.id,
@@ -154,8 +162,8 @@ serve(async (req) => {
 
     const mpData = await mpResponse.json();
 
-    // Salvar pagamento no banco
-    const { data: paymentRecord, error: insertError } = await supabaseClient
+    // Salvar pagamento no banco usando adminClient
+    const { data: paymentRecord, error: insertError } = await adminClient
       .from("subscription_payments")
       .insert({
         user_subscription_id: subscription?.id,
