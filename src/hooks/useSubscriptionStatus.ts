@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
+import { parseFunctionsError } from "@/lib/parseFunctionsError";
 
 export interface UserSubscription {
   id: string;
@@ -77,32 +78,23 @@ export function useSubscriptionStatus() {
       plan: "monthly" | "semiannual" | "annual";
       paymentMethod: "pix" | "credit_card";
     }) => {
+      // Garante sessão e envia Authorization explicitamente (evita 401/verify_jwt)
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Usuário não autenticado");
-      }
+      if (!session) throw new Error("Você precisa estar logado para assinar.");
 
       console.log("Chamando Edge Function com:", { plan, paymentMethod, userId: session.user.id });
 
       const response = await supabase.functions.invoke("create-subscription-payment", {
         body: { plan, paymentMethod },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       console.log("Resposta da Edge Function:", response);
 
-      // Melhor tratamento de erros para expor problemas reais
       if (response.error) {
         console.error("Erro na Edge Function:", response.error);
-        
-        // Se é um erro de rede/timeout, extrair informações úteis
-        if (response.error.message?.includes('non-2xx status code')) {
-          const errorDetails = `Edge Function Error - Status: ${response.error.status || 'unknown'}, Context: ${response.error.context || 'none'}`;
-          console.error("Detalhes do erro 408/timeout:", errorDetails);
-          throw new Error(`Erro de comunicação com servidor: ${errorDetails}`);
-        }
-        
-        throw new Error(response.error.message || "Erro ao gerar pagamento");
+        const { status, message } = await parseFunctionsError(response.error);
+        throw new Error(status ? `(${status}) ${message}` : message);
       }
 
       if (!response.data) {
@@ -113,8 +105,9 @@ export function useSubscriptionStatus() {
     },
     onSuccess: (data) => {
       if (data.paymentLink) {
-        // Abrir link de pagamento em nova aba
-        window.open(data.paymentLink, "_blank");
+        // Abrir link de pagamento em nova aba com fallback para popup bloqueado
+        const win = window.open(data.paymentLink, "_blank");
+        if (!win) window.location.href = data.paymentLink; // fallback se popup bloquear
         
         toast({
           title: "Link de pagamento gerado",
