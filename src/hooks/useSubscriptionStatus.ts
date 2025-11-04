@@ -91,8 +91,17 @@ export function useSubscriptionStatus() {
 
       console.log("Resposta da Edge Function:", response);
 
+      // Melhor tratamento de erros para expor problemas reais
       if (response.error) {
         console.error("Erro na Edge Function:", response.error);
+        
+        // Se é um erro de rede/timeout, extrair informações úteis
+        if (response.error.message?.includes('non-2xx status code')) {
+          const errorDetails = `Edge Function Error - Status: ${response.error.status || 'unknown'}, Context: ${response.error.context || 'none'}`;
+          console.error("Detalhes do erro 408/timeout:", errorDetails);
+          throw new Error(`Erro de comunicação com servidor: ${errorDetails}`);
+        }
+        
         throw new Error(response.error.message || "Erro ao gerar pagamento");
       }
 

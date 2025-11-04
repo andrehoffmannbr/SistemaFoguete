@@ -40,11 +40,20 @@ serve(async (req) => {
       }
     );
 
-    // Client para operações no banco (usa SERVICE_ROLE_KEY, bypassa RLS)
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    // Client para operações no banco - com fallback resiliente
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    let adminClient;
+
+    if (serviceRoleKey) {
+      adminClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        serviceRoleKey
+      );
+      console.log("Usando SERVICE_ROLE_KEY para operações no banco");
+    } else {
+      console.warn("SERVICE_ROLE_KEY não disponível, usando authClient com RLS");
+      adminClient = authClient; // Fallback para authClient com RLS
+    }
 
     // Verificar usuário autenticado usando authClient
     const {
@@ -157,7 +166,20 @@ serve(async (req) => {
     if (!mpResponse.ok) {
       const errorText = await mpResponse.text();
       console.error("Erro Mercado Pago:", errorText);
-      throw new Error(`Erro ao criar preferência no Mercado Pago: ${mpResponse.status}`);
+      
+      // Mensagens específicas por status code
+      let errorMessage = "Erro ao criar preferência no Mercado Pago";
+      if (mpResponse.status === 400) {
+        errorMessage = "Dados de pagamento inválidos. Verifique as informações.";
+      } else if (mpResponse.status === 401) {
+        errorMessage = "Erro de autenticação com Mercado Pago. Tente novamente.";
+      } else if (mpResponse.status === 429) {
+        errorMessage = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+      } else if (mpResponse.status >= 500) {
+        errorMessage = "Mercado Pago temporariamente indisponível. Tente novamente em alguns minutos.";
+      }
+      
+      throw new Error(`${errorMessage} (Status: ${mpResponse.status})`);
     }
 
     const mpData = await mpResponse.json();
@@ -193,13 +215,33 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Erro:", error);
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("Erro completo:", error);
+    
+    let errorMessage = "Erro desconhecido";
+    let statusCode = 400;
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Definir status codes apropriados baseado no tipo de erro
+      if (error.message.includes("não autenticado")) {
+        statusCode = 401;
+      } else if (error.message.includes("Mercado Pago")) {
+        statusCode = 502; // Bad Gateway - problema com serviço externo
+      } else if (error.message.includes("inválido")) {
+        statusCode = 422; // Unprocessable Entity
+      }
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ 
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+        service: "create-subscription-payment"
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: statusCode,
       }
     );
   }
