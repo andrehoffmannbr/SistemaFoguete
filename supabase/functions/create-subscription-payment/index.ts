@@ -32,11 +32,11 @@ serve(async (req) => {
     const startedAt = Date.now();
     const authHeader = req.headers.get("Authorization") || "";
     const hasBearer = authHeader.toLowerCase().startsWith("bearer ");
-    let jwtAud = "n/a", jwtSub = "n/a", jwtExp = 0, now = Math.floor(Date.now()/1000);
+    let jwt = "", jwtAud = "n/a", jwtSub = "n/a", jwtExp = 0, now = Math.floor(Date.now()/1000);
     if (hasBearer) {
       try {
-        const token = authHeader.slice(7);
-        const payload = JSON.parse(atob(token.split(".")[1] || ""));
+        jwt = authHeader.slice(7);
+        const payload = JSON.parse(atob(jwt.split(".")[1] || ""));
         jwtAud = payload?.aud || "n/a";
         jwtSub = (payload?.sub || "n/a").slice(0, 8);
         jwtExp = payload?.exp || 0;
@@ -66,7 +66,8 @@ serve(async (req) => {
     }
 
     // Verificar usuário autenticado usando authClient
-    const { data: { user }, error: userErr } = await authClient.auth.getUser();
+    // Em ambiente server NÃO há sessão local: use a sobrecarga getUser(jwt)
+    const { data: { user }, error: userErr } = await authClient.auth.getUser(jwt);
     if (userErr || !user) {
       const reason = !hasBearer
         ? "MissingAuthorizationHeader"
