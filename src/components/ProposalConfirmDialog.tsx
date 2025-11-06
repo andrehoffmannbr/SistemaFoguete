@@ -12,6 +12,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeConfirmStatus } from "@/lib/proposalStatus";
 
 interface ProposalConfirmDialogProps {
   proposal: any;
@@ -72,11 +73,11 @@ export const ProposalConfirmDialog = ({
 
       if (appointmentError) throw appointmentError;
 
-      // Atualizar status do orçamento para "confirmed"
+      // Atualizar status do orçamento para status permitido
       const { error: proposalError } = await supabase
         .from("proposals")
         .update({
-          status: "confirmed",
+          status: normalizeConfirmStatus("confirmed"),
           appointment_id: appointment.id,
           accepted_at: new Date().toISOString(),
         })
@@ -91,11 +92,12 @@ export const ProposalConfirmDialog = ({
 
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao confirmar orçamento:", error);
+      const reason = error?.details || error?.message || "Não foi possível confirmar o orçamento.";
       toast({
         title: "Erro",
-        description: "Não foi possível confirmar o orçamento.",
+        description: reason,
         variant: "destructive",
       });
     } finally {
